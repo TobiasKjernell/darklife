@@ -22,7 +22,7 @@ const otherIcon = divIcon({
 })
 const POLL_INTERVAL_MS = 10_000
 const MIN_DISTANCE_METERS = 10
-const MIN_UPDATE_MS = 20_000
+// const MIN_UPDATE_MS = 20_000
 const RADIUS_KM = 5
 
 // ---------------------------------------------------------------------------

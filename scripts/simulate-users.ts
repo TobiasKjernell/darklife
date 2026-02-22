@@ -20,10 +20,10 @@ import { createClient } from '@supabase/supabase-js'
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL!
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const NUM_USERS = 4
-const CENTER_LAT = 59.26439208941466 // change to your area
-const CENTER_LNG = 18.08178814254219
+const CENTER_LAT = 59.2984 // change to your area
+const CENTER_LNG = 18.0797
 const SPREAD_DEG = 0.01     // initial scatter radius (~1 km)
-const STEP_DEG = 0.002     // movement per tick (~30 m)
+const STEP_DEG = 0.005// movement per tick (~30 m)
 const TICK_MS = 2_000
 
 // ---------------------------------------------------------------------------

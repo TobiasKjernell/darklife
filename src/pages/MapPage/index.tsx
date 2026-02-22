@@ -56,7 +56,7 @@ function MapBoundsHandler({
   boundsRef: React.RefObject<LatLngBounds | null>
 }) {
   const fetchInRadius = useCallback(async () => {
-    const radiusBounds = latLng(currentPos).toBounds(RADIUS_KM * 1000)
+    const radiusBounds = latLng(currentPos).toBounds(RADIUS_KM * 2000)
     boundsRef.current = radiusBounds
     const { data } = await getUsersInBounds(
       radiusBounds.getSouth(),
@@ -94,27 +94,21 @@ const MapPage = () => {
   const boundsRef = useRef<LatLngBounds | null>(null)
 
   // ------------------------------------------------------------------
-  // 1. Anonymous auth — gives us a stable user_id linked to auth.users
+  // 1. On mount: auth + initial geolocation (both run once, no deps)
   // ------------------------------------------------------------------
   useEffect(() => {
-    async function init() {
+    async function initAuth() {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) return setUserId(session.user.id)
       const { data } = await supabase.auth.signInAnonymously()
       if (data.user) setUserId(data.user.id)
     }
-    init()
-  }, [])
+    initAuth()
 
-  // ------------------------------------------------------------------
-  // 2. Initial geolocation — show map ASAP, independent of auth
-  // ------------------------------------------------------------------
-  useEffect(() => {
     navigator.geolocation.getCurrentPosition((pos) => {
       const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude]
       setCurrentPos(coords)
-      lastPosRef.current = coords   
-        console.log(coords); 
+      lastPosRef.current = coords
     })
   }, [])
 
@@ -166,40 +160,22 @@ const MapPage = () => {
     }
     document.addEventListener('visibilitychange', handleVisibility)
 
-    return () => {
-      clearInterval(interval)
-      window.removeEventListener('beforeunload', remove)
-      window.removeEventListener('pagehide', remove)
-      document.removeEventListener('visibilitychange', handleVisibility)
-      remove()
-    }
-  }, [userId])
-
-  // ------------------------------------------------------------------
-  // 4. Realtime subscription — one channel, client-side bounds filtering
-  // ------------------------------------------------------------------
-  useEffect(() => {
-    if (!userId) return
-
+    // Realtime: location updates + presence disconnect detection
     const handleDbEvent = (payload: { eventType: string; new: { user_id: string; location: unknown }; old: { user_id?: string } }) => {
       if (payload.eventType === 'DELETE') {
         const id = payload.old.user_id
         if (id) setOtherUsers(prev => { const m = new Map(prev); m.delete(id); return m })
         return
       }
-
       const row = payload.new
       if (row.user_id === userId) return
-
       const pos = parseLocation(row.location)
       if (!pos) return
-
       const bounds = boundsRef.current
       const inside = !bounds || (
         pos[0] >= bounds.getSouth() && pos[0] <= bounds.getNorth() &&
         pos[1] >= bounds.getWest() && pos[1] <= bounds.getEast()
       )
-
       setOtherUsers(prev => {
         const m = new Map(prev)
         if (inside) m.set(row.user_id, pos)
@@ -211,7 +187,6 @@ const MapPage = () => {
     const channel = supabase
       .channel('live-locations')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_locations' }, handleDbEvent as never)
-      // Presence: fires reliably when any client disconnects (mobile included)
       .on('presence', { event: 'leave' }, ({ leftPresences }: { leftPresences: Array<{ user_id: string }> }) => {
         leftPresences.forEach(p => {
           setOtherUsers(prev => { const m = new Map(prev); m.delete(p.user_id); return m })
@@ -219,12 +194,18 @@ const MapPage = () => {
       })
       .subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
-          // Announce own presence — Supabase removes it automatically on disconnect
           await channel.track({ user_id: userId })
         }
       })
 
-    return () => { channel.unsubscribe() }
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('beforeunload', remove)
+      window.removeEventListener('pagehide', remove)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      remove()
+      channel.unsubscribe()
+    }
   }, [userId])
 
   // ------------------------------------------------------------------

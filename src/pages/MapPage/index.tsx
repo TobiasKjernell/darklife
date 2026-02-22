@@ -143,18 +143,33 @@ const MapPage = () => {
         setCurrentPos(newCoords)
 
         if (distanceMoved > MIN_DISTANCE_METERS) {
-          upload(newCoords)
+          upload(newCoords) 
         }
       })
     }, POLL_INTERVAL_MS)
 
-    const handleUnload = () => deleteLocation(userId)
-    window.addEventListener('beforeunload', handleUnload)
+    const remove = () => deleteLocation(userId)
+
+    // Desktop: fires on tab close / navigation
+    window.addEventListener('beforeunload', remove)
+    // Mobile (iOS/Android): fires when app is backgrounded or closed
+    window.addEventListener('pagehide', remove)
+    // Visibility: delete when hidden, re-upload immediately when visible again
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        remove()
+      } else if (document.visibilityState === 'visible' && lastPosRef.current) {
+        upsertLocation(userId, lastPosRef.current[0], lastPosRef.current[1])
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
       clearInterval(interval)
-      window.removeEventListener('beforeunload', handleUnload)
-      deleteLocation(userId)
+      window.removeEventListener('beforeunload', remove)
+      window.removeEventListener('pagehide', remove)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      remove()
     }
   }, [userId])
 

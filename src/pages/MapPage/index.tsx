@@ -3,7 +3,7 @@ import { divIcon, latLng } from 'leaflet'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import { supabase } from '../../supabase/client'
-import { deleteLocation, getUsersInBounds, parseLocation, subscribeToLocations, upsertLocation } from '../../supabase/supabaseCalls'
+import { deleteLocation, getUsersInBounds, parseLocation, upsertLocation } from '../../supabase/supabaseCalls'
 
 const DEFAULT_CENTER: LatLngExpression = [51.505, -0.09]
 
@@ -22,8 +22,8 @@ const otherIcon = divIcon({
 })
 const POLL_INTERVAL_MS = 10_000
 const MIN_DISTANCE_METERS = 10
-// const MIN_UPDATE_MS = 20_000
 const RADIUS_KM = 5
+const STALE_THRESHOLD_MS = 30_000 // users not updated in 30s are treated as gone
 
 // ---------------------------------------------------------------------------
 // Child: init recenter
@@ -65,9 +65,11 @@ function MapBoundsHandler({
       radiusBounds.getEast(),
     )
     if (!data) return
+    const now = Date.now()
     const users: OtherUsers = new Map()
     for (const row of data) {
       if (row.user_id === userId) continue
+      if (now - new Date(row.updated_at).getTime() > STALE_THRESHOLD_MS) continue
       const pos = parseLocation(row.location)
       if (pos) users.set(row.user_id, pos)
     }
@@ -138,12 +140,12 @@ const MapPage = () => {
         const distanceMoved = lastPosRef.current
           ? latLng(lastPosRef.current).distanceTo(latLng(newCoords))
           : Infinity
-        // const timeSinceUpdate = Date.now() - lastUpdateTimeRef.current
-      
+        const timeSinceUpdate = Date.now() - lastUpdateTimeRef.current
+
         setCurrentPos(newCoords)
 
-        if (distanceMoved > MIN_DISTANCE_METERS) {
-          upload(newCoords) 
+        if (distanceMoved > MIN_DISTANCE_METERS || timeSinceUpdate > POLL_INTERVAL_MS) {
+          upload(newCoords)
         }
       })
     }, POLL_INTERVAL_MS)
@@ -179,29 +181,23 @@ const MapPage = () => {
   useEffect(() => {
     if (!userId) return
 
-    const channel = subscribeToLocations((payload) => {
-      // Handle deletes (user removed / went inactive)
+    const handleDbEvent = (payload: { eventType: string; new: { user_id: string; location: unknown }; old: { user_id?: string } }) => {
       if (payload.eventType === 'DELETE') {
-        const deletedId = (payload.old as { user_id?: string }).user_id
-        if (deletedId) {
-          setOtherUsers(prev => { const m = new Map(prev); m.delete(deletedId); return m })
-        }
+        const id = payload.old.user_id
+        if (id) setOtherUsers(prev => { const m = new Map(prev); m.delete(id); return m })
         return
       }
 
-      const row = payload.new as { user_id: string; location: unknown }
-      if (row.user_id === userId) return // ignore own updates
+      const row = payload.new
+      if (row.user_id === userId) return
 
       const pos = parseLocation(row.location)
       if (!pos) return
 
-      // Client-side bounds check — avoids DB round-trips per event
       const bounds = boundsRef.current
       const inside = !bounds || (
-        pos[0] >= bounds.getSouth() &&
-        pos[0] <= bounds.getNorth() &&
-        pos[1] >= bounds.getWest() &&
-        pos[1] <= bounds.getEast()
+        pos[0] >= bounds.getSouth() && pos[0] <= bounds.getNorth() &&
+        pos[1] >= bounds.getWest() && pos[1] <= bounds.getEast()
       )
 
       setOtherUsers(prev => {
@@ -210,7 +206,23 @@ const MapPage = () => {
         else m.delete(row.user_id)
         return m
       })
-    })
+    }
+
+    const channel = supabase
+      .channel('live-locations')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_locations' }, handleDbEvent as never)
+      // Presence: fires reliably when any client disconnects (mobile included)
+      .on('presence', { event: 'leave' }, ({ leftPresences }: { leftPresences: Array<{ user_id: string }> }) => {
+        leftPresences.forEach(p => {
+          setOtherUsers(prev => { const m = new Map(prev); m.delete(p.user_id); return m })
+        })
+      })
+      .subscribe(async (status: string) => {
+        if (status === 'SUBSCRIBED') {
+          // Announce own presence — Supabase removes it automatically on disconnect
+          await channel.track({ user_id: userId })
+        }
+      })
 
     return () => { channel.unsubscribe() }
   }, [userId])

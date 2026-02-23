@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import { supabase } from '../../supabase/client'
 import { deleteLocation, getUsersInBounds, parseLocation, upsertLocation } from '../../supabase/supabaseCalls'
+import { useSession } from '../../hooks/useAuth'
 
 const DEFAULT_CENTER: LatLngExpression = [51.505, -0.09]
 
@@ -85,8 +86,10 @@ function MapBoundsHandler({
 // Page
 // ---------------------------------------------------------------------------
 const MapPage = () => {
+  const { data: session } = useSession()
+  const userId = session?.user.id ?? null
+
   const [currentPos, setCurrentPos] = useState<[number, number] | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
   const [otherUsers, setOtherUsers] = useState<OtherUsers>(new Map())
 
   const lastPosRef = useRef<[number, number] | null>(null)
@@ -94,17 +97,9 @@ const MapPage = () => {
   const boundsRef = useRef<LatLngBounds | null>(null)
 
   // ------------------------------------------------------------------
-  // 1. On mount: auth + initial geolocation (both run once, no deps)
+  // 1. On mount: initial geolocation fix
   // ------------------------------------------------------------------
   useEffect(() => {
-    async function initAuth() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) return setUserId(session.user.id)
-      const { data } = await supabase.auth.signInAnonymously()
-      if (data.user) setUserId(data.user.id)
-    }
-    initAuth()
-
     navigator.geolocation.getCurrentPosition((pos) => {
       const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude]
       setCurrentPos(coords)

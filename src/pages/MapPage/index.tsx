@@ -208,14 +208,14 @@ const MapPage = () => {
   // ------------------------------------------------------------------
   if (!currentPos) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center">
+      <div className="h-full w-full flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="h-screen w-screen">
+    <div className="h-full w-full">
       <MapContainer center={DEFAULT_CENTER} zoom={13} scrollWheelZoom className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

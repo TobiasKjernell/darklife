@@ -26,25 +26,48 @@ export function useSession() {
 }
 
 export function useLogin() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (data: AuthFormData) => {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       })
       if (error) throw new Error(error.message)
+      return authData.session
+    },
+    onSuccess: (session) => {
+      queryClient.setQueryData(['session'], session)
     },
   })
 }
 
 export function useRegister() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (data: AuthFormData) => {
-      const { error } = await supabase.auth.signUp({
+      const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
       })
       if (error) throw new Error(error.message)
+      return authData.session
+    },
+    onSuccess: (session) => {
+      queryClient.setQueryData(['session'], session)
+    },
+  })
+}
+
+export function useLogout() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(['session'], null)
     },
   })
 }

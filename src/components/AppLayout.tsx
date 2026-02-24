@@ -26,7 +26,7 @@ const AppLayout = () => {
           ) : (
             <button
               onClick={() => navigate('/')}
-              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"
+              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm cursor-pointer"
             >
               <ArrowLeft size={16} />
               Back
@@ -35,7 +35,7 @@ const AppLayout = () => {
           <button
             onClick={handleLogout}
             disabled={logout.isPending}
-            className="flex items-center gap-2 text-gray-400 hover:text-white disabled:opacity-50 transition-colors text-sm"
+            className="flex items-center gap-2 text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm cursor-pointer"
           >
             <LogOut size={16} />
             Log out

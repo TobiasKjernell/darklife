@@ -2,9 +2,11 @@ import type { LatLngBounds, LatLngExpression } from 'leaflet'
 import { divIcon, latLng } from 'leaflet'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
+import { Settings } from 'lucide-react'
 import { supabase } from '../../supabase/client'
 import { deleteLocation, getUsersInBounds, parseLocation, upsertLocation } from '../../supabase/supabaseCalls'
 import { useSession } from '../../hooks/useAuth'
+import UserPanel from '../../components/UserPanel'
 
 const DEFAULT_CENTER: LatLngExpression = [51.505, -0.09]
 
@@ -91,6 +93,7 @@ const MapPage = () => {
 
   const [currentPos, setCurrentPos] = useState<[number, number] | null>(null)
   const [otherUsers, setOtherUsers] = useState<OtherUsers>(new Map())
+  const [panelOpen, setPanelOpen] = useState(false)
 
   const lastPosRef = useRef<[number, number] | null>(null)
   const lastUpdateTimeRef = useRef<number>(0)
@@ -215,7 +218,17 @@ const MapPage = () => {
   }
 
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full relative overflow-hidden">
+      {/* Settings button */}
+      <button
+        onClick={() => setPanelOpen(true)}
+        className={`absolute top-4 right-4 z-1000 bg-gray-900 hover:bg-gray-800 text-white p-3 rounded-full shadow-lg transition-colors cursor-pointer ${panelOpen ? 'hidden' : ''}`}
+      >
+        <Settings size={22} />
+      </button>
+
+      <UserPanel isOpen={panelOpen} onClose={() => setPanelOpen(false)} />
+
       <MapContainer center={DEFAULT_CENTER} zoom={13} scrollWheelZoom className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

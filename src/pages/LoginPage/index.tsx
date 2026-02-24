@@ -77,7 +77,7 @@ const LoginPage = () => {
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="mt-2 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-gray-950 font-semibold rounded-lg py-2.5 transition-colors"
+            className="mt-2 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-950 font-semibold rounded-lg py-2.5 transition-colors cursor-pointer"
           >
             {mutation.isPending ? 'Loading…' : isRegister ? 'Register' : 'Sign in'}
           </button>
@@ -92,7 +92,7 @@ const LoginPage = () => {
               mutation.reset()
               reset()
             }}
-            className="text-yellow-400 hover:text-yellow-300 font-medium transition-colors"
+            className="text-yellow-400 hover:text-yellow-300 font-medium transition-colors cursor-pointer"
           >
             {isRegister ? 'Sign in' : 'Register'}
           </button>

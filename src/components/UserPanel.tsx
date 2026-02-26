@@ -21,7 +21,7 @@ const UserPanel = ({ isOpen, onClose }: Props) => {
   const { data: session } = useSession()
   const userId = session?.user.id ?? null
   const updateProfile = useUpdateUserProfile(userId)
-  const { data: profile } = useUserProfile(userId)
+  const { data: profile, refetch } = useUserProfile(userId)
 
   const {
     register,
@@ -32,6 +32,12 @@ const UserPanel = ({ isOpen, onClose }: Props) => {
     resolver: zodResolver(profileSchema),
     defaultValues: { status: 'lurking' },
   })
+
+  useEffect(() => {
+    if (isOpen) {
+      refetch()
+    }
+  }, [isOpen, refetch])
 
   useEffect(() => {
     if (profile) {

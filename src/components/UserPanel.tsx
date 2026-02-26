@@ -1,7 +1,10 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { X } from 'lucide-react'
 import { profileSchema, type ProfileFormData } from '../schemas/schemas'
+import { useSession, useUpdateUserProfile, useUserProfile } from '../hooks/useAuth'
+import type { UserProfile } from '../supabase/supabaseCalls'
 
 const STATUS_OPTIONS: { value: ProfileFormData['status']; label: string }[] = [
   { value: 'on_the_way', label: 'On the way' },
@@ -15,18 +18,37 @@ interface Props {
 }
 
 const UserPanel = ({ isOpen, onClose }: Props) => {
+  const { data: session } = useSession()
+  const userId = session?.user.id ?? null
+  const updateProfile = useUpdateUserProfile(userId)
+  const { data: profile } = useUserProfile(userId)
+
   const {
     register,
     handleSubmit,
     formState: { errors },
+    reset,
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: { status: 'lurking' },
   })
 
+  useEffect(() => {
+    if (profile) {
+      const p = profile as UserProfile
+      reset({
+        nickname: p.nickname || '',
+        description: p.description || '',
+        barName: p.bar_name || '',
+        status: p.status,
+      })
+    }
+  }, [profile, reset])
+
   const onSubmit = (data: ProfileFormData) => {
-    console.log(data)
-    onClose()
+    updateProfile.mutate(data, {
+      onSuccess: () => onClose(),
+    })
   }
 
   return (
@@ -107,11 +129,18 @@ const UserPanel = ({ isOpen, onClose }: Props) => {
             </div>
           </div>
 
+          {updateProfile.error && (
+            <div className="bg-red-900 border border-red-700 rounded-lg p-3">
+              <p className="text-red-200 text-sm">{updateProfile.error.message}</p>
+            </div>
+          )}
+
           <button
             type="submit"
-            className="mt-auto bg-yellow-400 hover:bg-yellow-300 text-gray-950 font-semibold rounded-lg py-2.5 text-sm transition-colors cursor-pointer"
+            disabled={updateProfile.isPending}
+            className="mt-auto bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-950 font-semibold rounded-lg py-2.5 text-sm transition-colors cursor-pointer"
           >
-            Save
+            {updateProfile.isPending ? 'Saving…' : 'Save'}
           </button>
 
         </form>

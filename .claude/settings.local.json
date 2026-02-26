@@ -4,5 +4,10 @@
       "Bash(npm install:*)",
       "Bash(npx tsc:*)"
     ]
+  },
+   "mcpServers": {
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=yrtgnzldquuedyyrpyjl"
+    }
   }
 }

@@ -79,3 +79,32 @@ export function subscribeToLocations(
     .on('postgres_changes', { event: '*', schema: 'public', table: 'user_locations' }, handler as never)
     .subscribe()
 }
+
+export type UserProfile = {
+  user_id: string
+  nickname: string
+  description?: string
+  bar_name?: string
+  status: 'on_the_way' | 'at_place' | 'lurking'
+  updated_at: string
+  created_at: string
+}
+
+/** Fetch the current user's profile. */
+export async function getUserProfile(userId: string) {
+  return supabase.from('user_profiles' as never).select('*').eq('user_id', userId).single()
+}
+
+/** Upsert the current user's profile. */
+export async function upsertUserProfile(
+  userId: string,
+  data: Omit<UserProfile, 'user_id' | 'updated_at' | 'created_at'>,
+) {
+  return supabase.from('user_profiles' as never).upsert(
+    {
+      user_id: userId,
+      ...data,
+      updated_at: new Date().toISOString(),
+    } as never,
+  ).select()
+}

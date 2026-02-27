@@ -3,7 +3,7 @@ import { divIcon, latLng } from 'leaflet'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import { getUsersInBounds, parseLocation } from '../../supabase/supabaseCalls'
-import { useSession } from '../../hooks/useAuth'
+import { useSession, useUsersProfiles } from '../../hooks/useAuth'
 import { useLocationTracking, STALE_THRESHOLD_MS } from '../../hooks/useLocationTracking'
 import UserPanel from '../../components/UserPanel'
 import PeoplePanel from '../../components/PeoplePanel'
@@ -27,6 +27,12 @@ const otherIcon = divIcon({
 })
 
 const RADIUS_KM = 5
+
+const STATUS_LABELS: Record<string, string> = {
+  on_the_way: 'On the way',
+  at_place: 'At place',
+  lurking: 'Lurking',
+}
 
 // ---------------------------------------------------------------------------
 // Child: init recenter
@@ -92,11 +98,12 @@ const MapPage = () => {
   const userId = session?.user.id ?? null
 
   const { currentPos, otherUsers, boundsRef, setOtherUsers } = useLocationTracking(userId)
+  const otherUserIds = [...otherUsers.keys()]
+  const { data: profiles } = useUsersProfiles(otherUserIds)
+  const profilesMap = new Map(profiles?.map(p => [p.user_id, p]) ?? [])
 
   const [panelOpen, setPanelOpen] = useState(false)
   const [peopleOpen, setPeopleOpen] = useState(false)
-
-  const otherUserIds = [...otherUsers.keys()]
 
   // ------------------------------------------------------------------
   // Spinner while waiting for first geolocation fix
@@ -146,11 +153,27 @@ const MapPage = () => {
         />
 
         {/* Other users' markers */}
-        {[...otherUsers.entries()].map(([id, pos]) => (
-          <Marker key={id} position={pos} icon={otherIcon}>
-            <Popup>User {id.slice(0, 8)}</Popup>
-          </Marker>
-        ))}
+        {[...otherUsers.entries()].map(([id, pos]) => {
+          const profile = profilesMap.get(id)
+          return (
+            <Marker key={id} position={pos} icon={otherIcon}>
+              <Popup>
+                <div className="w-48">
+                  <p className="font-semibold text-sm">{profile?.nickname ?? 'Unknown'}</p>
+                  {profile?.status && (
+                    <p className="text-xs text-gray-600">{STATUS_LABELS[profile.status]}</p>
+                  )}
+                  {profile?.description && (
+                    <p className="text-xs mt-2">{profile.description}</p>
+                  )}
+                  {profile?.bar_name && (
+                    <p className="text-xs text-gray-600 mt-1">📍 {profile.bar_name}</p>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          )
+        })}
       </MapContainer>
     </div>
   )

@@ -97,7 +97,7 @@ export async function getUserProfile(userId: string) {
 
 /** Fetch multiple user profiles by user IDs. */
 export async function getUserProfiles(userIds: string[]) {
-  return supabase.from('user_profiles' as never).select('user_id, nickname, status').in('user_id', userIds)
+  return supabase.from('user_profiles' as never).select('user_id, nickname, status, description, bar_name').in('user_id', userIds)
 }
 
 /** Upsert the current user's profile. */

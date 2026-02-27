@@ -109,7 +109,9 @@ export function useUpdateUserProfile(userId: string | null) {
 }
 
 export function useUsersProfiles(userIds: string[]) {
-  return useQuery({
+  const queryClient = useQueryClient()
+
+  const query = useQuery({
     queryKey: ['usersProfiles', userIds],
     queryFn: async () => {
       if (!userIds.length) return []
@@ -119,4 +121,32 @@ export function useUsersProfiles(userIds: string[]) {
     },
     enabled: userIds.length > 0,
   })
+
+  // Subscribe to realtime profile changes for visible users
+  useEffect(() => {
+    if (!userIds.length) return
+
+    const channel = supabase
+      .channel('live-profiles')
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'user_profiles' },
+        (payload) => {
+          const updated = payload.new as UserProfile
+          if (!userIds.includes(updated.user_id)) return
+
+          queryClient.setQueryData(
+            ['usersProfiles', userIds],
+            (prev: UserProfile[] | undefined) => {
+              if (!prev) return prev
+              return prev.map(p => p.user_id === updated.user_id ? updated : p)
+            },
+          )
+        },
+      )
+      .subscribe()
+
+    return () => { channel.unsubscribe() }
+  }, [userIds, queryClient])
+
+  return query
 }

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../supabase/client'
-import { getUserProfile, upsertUserProfile } from '../supabase/supabaseCalls'
+import { getUserProfile, getUserProfiles, upsertUserProfile, type UserProfile } from '../supabase/supabaseCalls'
 import type { AuthFormData, ProfileFormData } from '../schemas/schemas'
 
 export function useSession() {
@@ -105,5 +105,18 @@ export function useUpdateUserProfile(userId: string | null) {
         queryClient.setQueryData(['userProfile', userId], data)
       }
     },
+  })
+}
+
+export function useUsersProfiles(userIds: string[]) {
+  return useQuery({
+    queryKey: ['usersProfiles', userIds],
+    queryFn: async () => {
+      if (!userIds.length) return []
+      const { data, error } = await getUserProfiles(userIds)
+      if (error) throw new Error(error.message)
+      return data as UserProfile[]
+    },
+    enabled: userIds.length > 0,
   })
 }

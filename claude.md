@@ -31,6 +31,7 @@
  - Prefer interfaces over types for object shapes
  - Keep code readable with spacing around error handling
  - Refetch queries when opening panels/modals to ensure fresh data
+ - If there's html blockets in page, make a component and make sure page files are clean.
 
 ## Key Features
  - Geolocation tracking: 10-second polling, 20m movement threshold

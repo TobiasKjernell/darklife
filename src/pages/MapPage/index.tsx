@@ -2,11 +2,13 @@ import type { LatLngBounds, LatLngExpression } from 'leaflet'
 import { divIcon, latLng } from 'leaflet'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
-import { Settings } from 'lucide-react'
-import { supabase } from '../../supabase/client'
-import { deleteLocation, getUsersInBounds, parseLocation, upsertLocation } from '../../supabase/supabaseCalls'
+import { getUsersInBounds, parseLocation } from '../../supabase/supabaseCalls'
 import { useSession } from '../../hooks/useAuth'
+import { useLocationTracking, STALE_THRESHOLD_MS } from '../../hooks/useLocationTracking'
 import UserPanel from '../../components/UserPanel'
+import PeoplePanel from '../../components/PeoplePanel'
+import PeopleButton from '../../components/PeopleButton'
+import SettingsButton from '../../components/SettingsButton'
 
 const DEFAULT_CENTER: LatLngExpression = [51.505, -0.09]
 
@@ -23,10 +25,8 @@ const otherIcon = divIcon({
   iconSize: [10, 10],
   iconAnchor: [5, 5],
 })
-const POLL_INTERVAL_MS = 10_000
-const MIN_DISTANCE_METERS = 10
+
 const RADIUS_KM = 5
-const STALE_THRESHOLD_MS = 30_000 // users not updated in 30s are treated as gone
 
 // ---------------------------------------------------------------------------
 // Child: init recenter
@@ -91,120 +91,12 @@ const MapPage = () => {
   const { data: session } = useSession()
   const userId = session?.user.id ?? null
 
-  const [currentPos, setCurrentPos] = useState<[number, number] | null>(null)
-  const [otherUsers, setOtherUsers] = useState<OtherUsers>(new Map())
+  const { currentPos, otherUsers, boundsRef, setOtherUsers } = useLocationTracking(userId)
+
   const [panelOpen, setPanelOpen] = useState(false)
+  const [peopleOpen, setPeopleOpen] = useState(false)
 
-  const lastPosRef = useRef<[number, number] | null>(null)
-  const lastUpdateTimeRef = useRef<number>(0)
-  const boundsRef = useRef<LatLngBounds | null>(null)
-
-  // ------------------------------------------------------------------
-  // 1. On mount: initial geolocation fix
-  // ------------------------------------------------------------------
-  useEffect(() => {
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude]
-      setCurrentPos(coords)
-      lastPosRef.current = coords
-    })
-  }, [])
-
-  // ------------------------------------------------------------------
-  // 3. Upload interval — starts once userId is ready.
-  //    Uploads only when moved >10 m OR >10 s since last upload.
-  // ------------------------------------------------------------------
-  useEffect(() => {
-    if (!userId) return
-
-    const upload = (coords: [number, number]) => {
-      lastPosRef.current = coords
-      lastUpdateTimeRef.current = Date.now()
-      upsertLocation(userId, coords[0], coords[1])
-    }
-
-    // Upload the position we already have (if geolocation resolved first)
-    if (lastPosRef.current) upload(lastPosRef.current)
-      
-    const interval = setInterval(() => {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        const newCoords: [number, number] = [pos.coords.latitude, pos.coords.longitude]
-        const distanceMoved = lastPosRef.current
-          ? latLng(lastPosRef.current).distanceTo(latLng(newCoords))
-          : Infinity
-        const timeSinceUpdate = Date.now() - lastUpdateTimeRef.current
-
-        setCurrentPos(newCoords)
-
-        if (distanceMoved > MIN_DISTANCE_METERS || timeSinceUpdate > POLL_INTERVAL_MS) {
-          upload(newCoords)
-        }
-      })
-    }, POLL_INTERVAL_MS)
-
-    const remove = () => deleteLocation(userId)
-
-    // Desktop: fires on tab close / navigation
-    window.addEventListener('beforeunload', remove)
-    // Mobile (iOS/Android): fires when app is backgrounded or closed
-    window.addEventListener('pagehide', remove)
-    // Visibility: delete when hidden, re-upload immediately when visible again
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        remove()
-      } else if (document.visibilityState === 'visible' && lastPosRef.current) {
-        upsertLocation(userId, lastPosRef.current[0], lastPosRef.current[1])
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-
-    // Realtime: location updates + presence disconnect detection
-    const handleDbEvent = (payload: { eventType: string; new: { user_id: string; location: unknown }; old: { user_id?: string } }) => {
-      if (payload.eventType === 'DELETE') {
-        const id = payload.old.user_id
-        if (id) setOtherUsers(prev => { const m = new Map(prev); m.delete(id); return m })
-        return
-      }
-      const row = payload.new
-      if (row.user_id === userId) return
-      const pos = parseLocation(row.location)
-      if (!pos) return
-      const bounds = boundsRef.current
-      const inside = !bounds || (
-        pos[0] >= bounds.getSouth() && pos[0] <= bounds.getNorth() &&
-        pos[1] >= bounds.getWest() && pos[1] <= bounds.getEast()
-      )
-      setOtherUsers(prev => {
-        const m = new Map(prev)
-        if (inside) m.set(row.user_id, pos)
-        else m.delete(row.user_id)
-        return m
-      })
-    }
-
-    const channel = supabase
-      .channel('live-locations')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_locations' }, handleDbEvent as never)
-      .on('presence', { event: 'leave' }, ({ leftPresences }: { leftPresences: Array<{ user_id: string }> }) => {
-        leftPresences.forEach(p => {
-          setOtherUsers(prev => { const m = new Map(prev); m.delete(p.user_id); return m })
-        })
-      })
-      .subscribe(async (status: string) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({ user_id: userId })
-        }
-      })
-
-    return () => {
-      clearInterval(interval)
-      window.removeEventListener('beforeunload', remove)
-      window.removeEventListener('pagehide', remove)
-      document.removeEventListener('visibilitychange', handleVisibility)
-      remove()
-      channel.unsubscribe()
-    }
-  }, [userId])
+  const otherUserIds = [...otherUsers.keys()]
 
   // ------------------------------------------------------------------
   // Spinner while waiting for first geolocation fix
@@ -219,15 +111,10 @@ const MapPage = () => {
 
   return (
     <div className="h-full w-full relative overflow-hidden">
-      {/* Settings button */}
-      <button
-        onClick={() => setPanelOpen(true)}
-        className={`absolute top-4 right-4 z-1000 bg-gray-900 hover:bg-gray-800 text-white p-3 rounded-full shadow-lg transition-colors cursor-pointer ${panelOpen ? 'hidden' : ''}`}
-      >
-        <Settings size={22} />
-      </button>
-
+      <SettingsButton onClick={() => setPanelOpen(true)} isOpen={panelOpen} />
       <UserPanel isOpen={panelOpen} onClose={() => setPanelOpen(false)} />
+      <PeopleButton onClick={() => setPeopleOpen(true)} userCount={otherUserIds.length} isOpen={peopleOpen} />
+      <PeoplePanel isOpen={peopleOpen} onClose={() => setPeopleOpen(false)} userIds={otherUserIds} />
 
       <MapContainer center={DEFAULT_CENTER} zoom={13} scrollWheelZoom className="h-full w-full">
         <TileLayer

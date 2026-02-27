@@ -23,22 +23,19 @@ const UserPanel = ({ isOpen, onClose }: Props) => {
   const updateProfile = useUpdateUserProfile(userId)
   const { data: profile, refetch } = useUserProfile(userId)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm<ProfileFormData>({
+  const { register, handleSubmit,formState: { errors }, reset } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: { status: 'lurking' },
   })
 
+  // Refetch profile data when panel opens to ensure fresh data
   useEffect(() => {
     if (isOpen) {
       refetch()
     }
   }, [isOpen, refetch])
 
+  // Populate form fields when profile data loads
   useEffect(() => {
     if (profile) {
       const p = profile as UserProfile

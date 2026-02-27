@@ -13,16 +13,11 @@ const LoginPage = () => {
   const register_ = useRegister()
   const mutation = isRegister ? register_ : login
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm<AuthFormData>({
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<AuthFormData>({
     resolver: zodResolver(authSchema),
   })
 
-  const onSubmit = async (data: AuthFormData) => {
+  const onSubmit = (data: AuthFormData) => {
     mutation.mutate(data, {
       onSuccess: () => navigate('/'),
     })

@@ -24,7 +24,7 @@ export function useLocationTracking(userId: string | null) {
       const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude]
       setCurrentPos(coords)
       lastPosRef.current = coords
-    })
+    }, (e) => console.log(e), { enableHighAccuracy: true, maximumAge: 0 })
   }, [])
 
   // Polling + upload + listeners + realtime subscription

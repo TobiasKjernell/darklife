@@ -126,10 +126,10 @@ const MapPage = () => {
 
       <MapContainer center={DEFAULT_CENTER} zoom={13} scrollWheelZoom className="h-full w-full">
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          attribution=''
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          detectRetina
-        />
+          detectRetina  
+        />  
 
         <RecenterMap pos={currentPos} />
 

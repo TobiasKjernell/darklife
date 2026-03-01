@@ -1,6 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../supabase/client'
 import { getUserProfile, getUserProfiles, upsertUserProfile, type UserProfile } from '../supabase/supabaseCalls'
 import type { ProfileFormData } from '../schemas/schemas'
 
@@ -40,8 +39,11 @@ export function useUpdateUserProfile(userId: string | null) {
 }
 
 export function useUsersProfiles(userIds: string[]) {
-  const queryClient = useQueryClient()
-  const userIdsKey = JSON.stringify([...userIds].sort())
+  const userIdsRef = useRef(userIds)
+  // Keep ref in sync with current userIds
+  useEffect(() => {
+    userIdsRef.current = userIds
+  }, [userIds])
 
   const query = useQuery({
     queryKey: ['usersProfiles', userIds],
@@ -53,32 +55,6 @@ export function useUsersProfiles(userIds: string[]) {
     },
     enabled: userIds.length > 0,
   })
-
-  // Subscribe to realtime profile changes for visible users
-  useEffect(() => {
-    if (!userIds.length) return
-
-    const channel = supabase
-      .channel(`live-profiles-${userIdsKey}`)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'user_profiles' },
-        (payload) => {
-          const updated = payload.new as UserProfile
-          if (!userIds.includes(updated.user_id)) return
-
-          queryClient.setQueryData(
-            ['usersProfiles', userIds],
-            (prev: UserProfile[] | undefined) => {
-              if (!prev) return prev
-              return prev.map(p => p.user_id === updated.user_id ? updated : p)
-            },
-          )
-        },
-      )
-      .subscribe()
-
-    return () => { channel.unsubscribe() }
-  }, [userIdsKey, userIds, queryClient])
-
+  
   return query
 }

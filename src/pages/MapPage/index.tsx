@@ -2,7 +2,7 @@ import type { LatLngBounds, LatLngExpression } from 'leaflet'
 import { divIcon, latLng } from 'leaflet'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
-import { getUsersInBounds, parseLocation } from '../../supabase/supabaseCalls'
+import { getUsersInBounds, parseLocation, type UserProfile } from '../../supabase/supabaseCalls'
 import { useSession } from '../../hooks/useAuth'
 import { useUsersProfiles } from '../../hooks/useProfile'
 import { useLocationTracking, STALE_THRESHOLD_MS } from '../../hooks/useLocationTracking'
@@ -10,6 +10,8 @@ import UserPanel from '../../components/UserPanel'
 import PeoplePanel from '../../components/PeoplePanel'
 import PeopleButton from '../../components/PeopleButton'
 import SettingsButton from '../../components/SettingsButton'
+import { supabase } from '../../supabase/client'
+import { useQueryClient } from '@tanstack/react-query'
 
 const DEFAULT_CENTER: LatLngExpression = [51.505, -0.09]
 
@@ -107,14 +109,40 @@ function MapBoundsHandler({
 const MapPage = () => {
   const { data: session } = useSession()
   const userId = session?.user.id ?? null
+  const queryClient = useQueryClient()
 
   const { currentPos, otherUsers, boundsRef, setOtherUsers } = useLocationTracking(userId)
   const otherUserIds = [...otherUsers.keys()]
+
   const { data: profiles } = useUsersProfiles(otherUserIds)
   const profilesMap = new Map(profiles?.map(p => [p.user_id, p]) ?? [])
 
   const [panelOpen, setPanelOpen] = useState(false)
   const [peopleOpen, setPeopleOpen] = useState(false)
+
+  useEffect(() => {
+  
+    const channel = supabase
+      .channel(`live-profiles`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'user_profiles' },
+        (payload) => {
+          const updated = payload.new as UserProfile
+          console.log('updating')
+          queryClient.setQueryData(
+            ['usersProfiles'],
+            (prev: UserProfile[] | undefined) => {
+              if (!prev) return prev
+              return prev.map(p => p.user_id === updated.user_id ? updated : p)
+            },
+          )
+        },
+      )
+      .subscribe()
+
+    return () => { channel.unsubscribe() }
+  }, [])
+
 
   // ------------------------------------------------------------------
   // Spinner while waiting for first geolocation fix

@@ -118,7 +118,7 @@ export function useLocationTracking(userId: string | null) {
       remove()
       channel.unsubscribe()
     }
-  }, [userId])
+  }, [])
 
   return { currentPos, otherUsers, boundsRef, setOtherUsers }
 }

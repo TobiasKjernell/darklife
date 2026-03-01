@@ -20,12 +20,22 @@ const selfIcon = divIcon({
   iconAnchor: [7, 7],
 })
 
-const otherIcon = divIcon({
-  className: '',
-  html: '<div style="width:15px;height:15px;border-radius:50%;background:#a855f7;border:2px solid #6b21a8;"></div>',
-  iconSize: [10, 10],
-  iconAnchor: [5, 5],
-})
+const getOtherUserIcon = (status: string) => {
+  const statusColors: Record<string, { bg: string; border: string }> = {
+    lurking: { bg: '#9ca3af', border: '#6b7280' },
+    at_place: { bg: '#32cd32', border: '#228b22' },
+    on_the_way: { bg: '#ffeb3b', border: '#f57f17' },
+  }
+
+  const colors = statusColors[status] ?? { bg: '#a855f7', border: '#6b21a8' }
+
+  return divIcon({
+    className: '',
+    html: `<div style="width:15px;height:15px;border-radius:50%;background:${colors.bg};border:2px solid ${colors.border};"></div>`,
+    iconSize: [10, 10],
+    iconAnchor: [5, 5],
+  })
+}
 
 const RADIUS_KM = 5
 
@@ -119,15 +129,19 @@ const MapPage = () => {
 
   return (
     <div className="h-full w-full relative overflow-hidden">
-      <SettingsButton onClick={() => setPanelOpen(true)} isOpen={panelOpen} />
+      {/* Top-center button container */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-1000 flex items-center gap-3">
+        <PeopleButton onClick={() => setPeopleOpen(!peopleOpen)} userCount={otherUserIds.length} isOpen={peopleOpen} />
+        <SettingsButton onClick={() => setPanelOpen(!panelOpen)} isOpen={panelOpen} />
+      </div>
+
       <UserPanel isOpen={panelOpen} onClose={() => setPanelOpen(false)} />
-      <PeopleButton onClick={() => setPeopleOpen(true)} userCount={otherUserIds.length} isOpen={peopleOpen} />
       <PeoplePanel isOpen={peopleOpen} onClose={() => setPeopleOpen(false)} userIds={otherUserIds} />
 
-      <MapContainer center={DEFAULT_CENTER} zoom={13} scrollWheelZoom className="h-full w-full">
-        <TileLayer
+      <MapContainer center={DEFAULT_CENTER} zoom={12} scrollWheelZoom attributionControl={false} className="h-full w-full">
+        <TileLayer  
           attribution=''
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"  
           detectRetina  
         />  
 
@@ -157,7 +171,7 @@ const MapPage = () => {
         {[...otherUsers.entries()].map(([id, pos]) => {
           const profile = profilesMap.get(id)
           return (
-            <Marker key={id} position={pos} icon={otherIcon}>
+            <Marker key={id} position={pos} icon={getOtherUserIcon(profile?.status ?? 'lurking')}>
               <Popup>
                 <div className="w-48">
                   <p className="font-semibold text-sm">{profile?.nickname ?? 'Unknown'}</p>

@@ -47,6 +47,7 @@ export function useUsersProfiles(userIds: string[]) {
 
   const query = useQuery({
     queryKey: ['usersProfiles', userIds],
+    staleTime:0,
     queryFn: async () => {
       if (!userIds.length) return []
       const { data, error } = await getUserProfiles(userIds)

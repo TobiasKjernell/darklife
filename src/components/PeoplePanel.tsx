@@ -6,6 +6,8 @@ interface Props {
   isOpen: boolean
   onClose: () => void
   userIds: string[]
+  selectedUserId?: string | null
+  onSelectUser?: (userId: string | null) => void
 }
 
 const STATUS_COLORS = {
@@ -23,7 +25,7 @@ const STATUS_LABELS = {
 type SortField = 'nickname' | 'status'
 type SortOrder = 'asc' | 'desc'
 
-const PeoplePanel = ({ isOpen, onClose, userIds }: Props) => {
+const PeoplePanel = ({ isOpen, onClose, userIds, selectedUserId, onSelectUser }: Props) => {
   const [sortField, setSortField] = useState<SortField>('nickname')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
   const { data: profiles, isLoading } = useUsersProfiles(userIds)
@@ -98,7 +100,18 @@ const PeoplePanel = ({ isOpen, onClose, userIds }: Props) => {
               {sortedProfiles.map((profile) => (
                 <div
                   key={profile.user_id}
-                  className="bg-gray-800 rounded-lg p-3 flex items-center justify-between hover:bg-gray-750 transition-colors"
+                  onClick={() => {
+                    if (selectedUserId === profile.user_id) {
+                      onSelectUser?.(null)
+                    } else {
+                      onSelectUser?.(profile.user_id)
+                    }
+                  }}
+                  className={`rounded-lg p-3 flex items-center justify-between cursor-pointer transition-colors ${
+                    selectedUserId === profile.user_id
+                      ? 'bg-yellow-400/20 border-2 border-yellow-400'
+                      : 'bg-gray-800 hover:bg-gray-750 border-2 border-transparent'
+                  }`}
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">

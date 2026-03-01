@@ -119,6 +119,7 @@ const MapPage = () => {
 
   const [panelOpen, setPanelOpen] = useState(false)
   const [peopleOpen, setPeopleOpen] = useState(false)
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
 
   useEffect(() => {
 
@@ -137,7 +138,7 @@ const MapPage = () => {
             },
           )
           queryClient.invalidateQueries(
-            { queryKey: ['usersProfile'] }
+            { queryKey: ['usersProfiles', otherUserIds] }
           )
         },
       )
@@ -167,7 +168,13 @@ const MapPage = () => {
       </div>
 
       <UserPanel isOpen={panelOpen} onClose={() => setPanelOpen(false)} />
-      <PeoplePanel isOpen={peopleOpen} onClose={() => setPeopleOpen(false)} userIds={otherUserIds} />
+      <PeoplePanel
+        isOpen={peopleOpen}
+        onClose={() => setPeopleOpen(false)}
+        userIds={otherUserIds}
+        selectedUserId={selectedUserId}
+        onSelectUser={setSelectedUserId}
+      />
 
       <MapContainer center={DEFAULT_CENTER} zoom={12} scrollWheelZoom attributionControl={false} className="h-full w-full">
         <TileLayer
@@ -201,23 +208,33 @@ const MapPage = () => {
         {/* Other users' markers */}
         {[...otherUsers.entries()].map(([id, pos]) => {
           const profile = profilesMap.get(id)
+          const isSelected = selectedUserId === id
           return (
-            <Marker key={id} position={pos} icon={getOtherUserIcon(profile?.status ?? 'lurking')}>
-              <Popup>
-                <div className="w-48">
-                  <p className="font-semibold text-sm">{profile?.nickname ?? 'Unknown'}</p>
-                  {profile?.status && (
-                    <p className="text-xs text-gray-600">{STATUS_LABELS[profile.status]}</p>
-                  )}
-                  {profile?.description && (
-                    <p className="text-xs mt-2">{profile.description}</p>
-                  )}
-                  {profile?.bar_name && (
-                    <p className="text-xs text-gray-600 mt-1">📍 {profile.bar_name}</p>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
+            <div key={id}>
+              {isSelected && (
+                <Circle
+                  center={pos}
+                  radius={150}
+                  pathOptions={{ color: '#e90046', fillColor: '#facc15', fillOpacity: 0.1, weight: 3 }}
+                />
+              )}
+              <Marker position={pos} icon={getOtherUserIcon(profile?.status ?? 'lurking')}>
+                <Popup>
+                  <div className="w-48">
+                    <p className="font-semibold text-sm">{profile?.nickname ?? 'Unknown'}</p>
+                    {profile?.status && (
+                      <p className="text-xs text-gray-600">{STATUS_LABELS[profile.status]}</p>
+                    )}
+                    {profile?.description && (
+                      <p className="text-xs mt-2">{profile.description}</p>
+                    )}
+                    {profile?.bar_name && (
+                      <p className="text-xs text-gray-600 mt-1">📍 {profile.bar_name}</p>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            </div>
           )
         })}
       </MapContainer>

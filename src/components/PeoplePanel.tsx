@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { useUsersProfiles } from '../hooks/useAuth'
+import { useUsersProfiles } from '../hooks/useProfile'
 
 interface Props {
   isOpen: boolean

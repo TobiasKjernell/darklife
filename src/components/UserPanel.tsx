@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { X } from 'lucide-react'
 import { profileSchema, type ProfileFormData } from '../schemas/schemas'
-import { useSession, useUpdateUserProfile, useUserProfile } from '../hooks/useAuth'
+import { useSession } from '../hooks/useAuth'
+import { useUpdateUserProfile, useUserProfile } from '../hooks/useProfile'
 import type { UserProfile } from '../supabase/supabaseCalls'
 
 const STATUS_OPTIONS: { value: ProfileFormData['status']; label: string }[] = [

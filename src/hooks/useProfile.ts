@@ -41,6 +41,7 @@ export function useUpdateUserProfile(userId: string | null) {
 
 export function useUsersProfiles(userIds: string[]) {
   const queryClient = useQueryClient()
+  const userIdsKey = JSON.stringify([...userIds].sort())
 
   const query = useQuery({
     queryKey: ['usersProfiles', userIds],
@@ -58,9 +59,9 @@ export function useUsersProfiles(userIds: string[]) {
     if (!userIds.length) return
 
     const channel = supabase
-      .channel('live-profiles')
+      .channel(`live-profiles-${userIdsKey}`)
       .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'user_profiles' },
+        { event: '*', schema: 'public', table: 'user_profiles' },
         (payload) => {
           const updated = payload.new as UserProfile
           if (!userIds.includes(updated.user_id)) return
@@ -77,7 +78,7 @@ export function useUsersProfiles(userIds: string[]) {
       .subscribe()
 
     return () => { channel.unsubscribe() }
-  }, [userIds, queryClient])
+  }, [userIdsKey, userIds, queryClient])
 
   return query
 }

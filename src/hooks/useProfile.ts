@@ -52,6 +52,7 @@ export function useUsersProfiles(userIds: string[]) {
       if (!userIds.length) return []
       const { data, error } = await getUserProfiles(userIds)
       if (error) throw new Error(error.message)
+        console.log(data);
       return data as UserProfile[]
     },
     enabled: userIds.length > 0,

@@ -59,7 +59,7 @@ function RecenterMap({ pos }: { pos: LatLngExpression }) {
     map.setView(pos)
   }, [pos, map])
   return null
-}   
+}
 
 // ---------------------------------------------------------------------------
 // Child: fetches users in bounds on load + every map pan/zoom
@@ -121,20 +121,23 @@ const MapPage = () => {
   const [peopleOpen, setPeopleOpen] = useState(false)
 
   useEffect(() => {
-  
+
     const channel = supabase
       .channel(`live-profiles`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'user_profiles' },
         (payload) => {
           const updated = payload.new as UserProfile
-          console.log('updating')
+
           queryClient.setQueryData(
-            ['usersProfiles'],
+            ['usersProfiles', otherUserIds],
             (prev: UserProfile[] | undefined) => {
               if (!prev) return prev
               return prev.map(p => p.user_id === updated.user_id ? updated : p)
             },
+          )
+          queryClient.invalidateQueries(
+            { queryKey: ['usersProfile'] }
           )
         },
       )
@@ -167,11 +170,11 @@ const MapPage = () => {
       <PeoplePanel isOpen={peopleOpen} onClose={() => setPeopleOpen(false)} userIds={otherUserIds} />
 
       <MapContainer center={DEFAULT_CENTER} zoom={12} scrollWheelZoom attributionControl={false} className="h-full w-full">
-        <TileLayer  
+        <TileLayer
           attribution=''
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"  
-          detectRetina  
-        />  
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          detectRetina
+        />
 
         <RecenterMap pos={currentPos} />
 

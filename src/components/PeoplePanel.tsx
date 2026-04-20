@@ -32,19 +32,19 @@ const PeoplePanel = ({ isOpen, onClose, userIds, selectedUserId, onSelectUser }:
 
   const sortedProfiles = profiles
     ? [...profiles].sort((a, b) => {
-        let comparison = 0
+      let comparison = 0
 
-        if (sortField === 'nickname') {
-          const nameA = (a.nickname || 'Unknown').toLowerCase()
-          const nameB = (b.nickname || 'Unknown').toLowerCase()
-          comparison = nameA.localeCompare(nameB)
-        } else if (sortField === 'status') {
-          const statusOrder = { on_the_way: 0, at_place: 1, lurking: 2 }
-          comparison = (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3)
-        }
+      if (sortField === 'nickname') {
+        const nameA = (a.nickname || 'Unknown').toLowerCase()
+        const nameB = (b.nickname || 'Unknown').toLowerCase()
+        comparison = nameA.localeCompare(nameB)
+      } else if (sortField === 'status') {
+        const statusOrder = { on_the_way: 0, at_place: 1, lurking: 2 }
+        comparison = (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3)
+      }
 
-        return sortOrder === 'asc' ? comparison : -comparison
-      })
+      return sortOrder === 'asc' ? comparison : -comparison
+    })
     : []
 
   return (
@@ -59,9 +59,8 @@ const PeoplePanel = ({ isOpen, onClose, userIds, selectedUserId, onSelectUser }:
 
       {/* Panel */}
       <div
-        className={`absolute top-0 left-0 h-full w-80 bg-gray-900 border-r border-gray-800 z-[1001] flex flex-col shadow-2xl transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`absolute top-0 left-0 h-full w-80 bg-gray-900 border-r border-gray-800 z-[1001] flex flex-col shadow-2xl transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="px-5 py-4 border-b border-gray-800">
           <div className="flex items-center justify-between mb-3">
@@ -107,11 +106,10 @@ const PeoplePanel = ({ isOpen, onClose, userIds, selectedUserId, onSelectUser }:
                       onSelectUser?.(profile.user_id)
                     }
                   }}
-                  className={`rounded-lg p-3 flex items-center justify-between cursor-pointer transition-colors ${
-                    selectedUserId === profile.user_id
+                  className={`rounded-lg p-3 flex items-center justify-between cursor-pointer transition-colors ${selectedUserId === profile.user_id
                       ? 'bg-yellow-400/20 border-2 border-yellow-400'
                       : 'bg-gray-800 hover:bg-gray-750 border-2 border-transparent'
-                  }`}
+                    }`}
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">
@@ -119,6 +117,12 @@ const PeoplePanel = ({ isOpen, onClose, userIds, selectedUserId, onSelectUser }:
                     </p>
                     <p className="text-gray-400 text-xs mt-1">
                       {STATUS_LABELS[profile.status]}
+                    </p>
+                    <p className="text-gray-400 text-xs mt-1">
+                      {profile.bar_name || 'No bar name yet'}
+                    </p>
+                     <p className="text-gray-400 text-xs mt-1">
+                      {profile.description || 'No description'}
                     </p>
                   </div>
 

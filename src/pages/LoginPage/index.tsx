@@ -24,12 +24,14 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm bg-gray-900 rounded-2xl p-8 shadow-xl">
+    <div className="min-h-screen relative bg-gray-950 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(./beerbackground.webp)' }} />
+      <div className="absolute inset-0 bg-gray-950/75 backdrop-blur-sm" />
+      <div className="w-full relative z-10 max-w-sm bg-gray-900 rounded-2xl p-8 shadow-xl">
         <h1 className="text-2xl font-bold text-white mb-6 text-center">
           {isRegister ? 'Create account' : 'Sign in'}
         </h1>
-
+    
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-400" htmlFor="email">
